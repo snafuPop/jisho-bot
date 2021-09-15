@@ -35,7 +35,7 @@ class Info(commands.Cog):
   async def about(self, ctx):
     # Constructing the Embed.
     embed = discord.Embed(title = "", color = self.bot.user.color)
-    embed.set_author(name = "jisho", url = "https://github.com/snafuPop/yvona", icon_url = "https://image.flaticon.com/icons/png/512/25/25231.png")
+    embed.set_author(name = "jisho", url = "https://github.com/snafuPop/jisho-bot", icon_url = "https://image.flaticon.com/icons/png/512/25/25231.png")
     embed.set_thumbnail(url = self.bot.user.avatar_url)
 
     # Constructing additional information.
@@ -60,12 +60,12 @@ class Info(commands.Cog):
       manage_components.create_button(
         style = ButtonStyle.URL,
         label = "Invite jisho",
-        url = "https://discordapp.com/api/oauth2/authorize?client_id=547516876851380293&permissions=1861483585&scope=bot"),
+        url = "https://discord.com/api/oauth2/authorize?client_id=887600725797007370&permissions=0&scope=bot%20applications.commands"),
       # Github repo Button.
       manage_components.create_button(
         style = ButtonStyle.URL,
         label = "GitHub repo",
-        url = "https://github.com/snafuPop/yvona")]
+        url = "https://github.com/snafuPop/jisho-bot")]
     action_row = manage_components.create_actionrow(*buttons)
     await ctx.send(embed = embed, components = [action_row])
 
