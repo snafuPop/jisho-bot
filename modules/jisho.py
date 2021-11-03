@@ -5,7 +5,7 @@ from discord_slash.utils import manage_components
 from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_commands import create_option, create_choice
 from discord.ext import commands
-from dinteractions_Paginator import Paginator
+from ButtonPaginator import Paginator
 from builtins import bot
 import urllib.parse
 from random import choice
@@ -115,8 +115,9 @@ class Language(commands.Cog):
 
       count += 1
 
-    paginated_embed = Paginator(bot = self.bot, ctx = ctx, pages = embeds, authorOnly = True, useSelect = False)
-    await paginated_embed.run()
+    paginated_embed = Paginator(bot = self.bot, ctx = ctx, embeds = embeds, only = ctx.author)
+    # paginated_embed = Paginator(bot = self.bot, ctx = ctx, pages = embeds, authorOnly = True, useSelect = False)
+    await paginated_embed.start()
     #await ctx.send(embed = embed)
 
 
