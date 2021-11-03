@@ -4,71 +4,121 @@ from discord_slash import cog_ext, SlashContext, SlashCommand, ComponentContext
 from discord_slash.utils import manage_components
 from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_commands import create_option, create_choice
+from discord.ext import commands
+from ButtonPaginator import Paginator
 from builtins import bot
-import requests
-from titlecase import titlecase
-import sys
-import psutil
-import time
-from datetime import timedelta, datetime
+import urllib.parse
+from random import choice
+from googletrans import Translator
+import aiohttp
 
-class Info(commands.Cog):
+translator = Translator()
+
+class Language(commands.Cog):
   def __init__(self, bot):
-    self.time_alive = time.time()
-    self.bot = bot;
+    self.bot = bot
 
 
-  def datetime_to_unix(self, datetime_val):
-    # Because many of discord's api requests return time as a datetime object,
-    # we need to manually convert it into UNIX time.
-    return int(time.mktime((datetime_val).timetuple()))
+  def generate_footer(self, user, embed):
+    embed.set_footer(text = "Requested by " + str(user), icon_url = user.avatar_url)
+
+  def generate_error_msg(self, error):
+    embed = discord.Embed(title = str(type(error).__name__), description = ":no_entry: " + str(error))
+    embed.set_thumbnail(url = "https://4.bp.blogspot.com/-iLWX4m_Pht8/XDXcK2opNnI/AAAAAAABRHg/KkSa_pjFcygNx7-v-5AC12TFp08xNXlIgCLcBGAs/s800/sick_panic_man.png")
+    return embed
+
+  def generate_no_results_found_msg(self, term):
+    embed = discord.Embed(title = "No results found!", description = "No results found for **{}**.".format(term))
+    embed.set_thumbnail(url = "https://4.bp.blogspot.com/-Xce-5TfWV2E/XDXcmL1iOzI/AAAAAAABRLQ/RlZsBIYJvRUisHAZ1XnvbCiEgNQceq9LACLcBGAs/s800/pose_ukkari_man.png")
+    return embed
+
+  @cog_ext.cog_slash(name = "jisho", description = "Looks up a word on jisho.org", 
+    options = [
+      create_option(
+        name = "term",
+        description = "English, Japanese, Romaji, words, or text.",
+        option_type = 3,
+        required = True)])
+  async def jisho(self, ctx, term: str = None):
+    await ctx.defer()
+    url = "http://jisho.org/api/v1/search/words?keyword=" + urllib.parse.quote(term, encoding = "utf-8")
+    try:
+      async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+          data = await response.json()
+    except Exception as error:
+      embed = self.generate_error_msg(error)
+      self.generate_footer(ctx.author, embed)
+      await ctx.send(embed = embed)
+      return
+
+    results = data["data"]
+    if not results:
+      embed = self.generate_no_results_found_msg(term)
+      self.generate_footer(ctx.author, embed)
+      await ctx.send(embed = embed)
+      return
+
+    embeds = []
+    count = 1
+    for entries in results[:3]:
+      embed = discord.Embed(title = "Results for \"{}\"".format(term), color = ctx.author.color)
+      embed.set_thumbnail(url = "https://pbs.twimg.com/profile_images/378800000741890744/43702f3379bdb7d0d725b70ae9a5bd59_400x400.png")
+
+      info = ""
+      if "word" in entries["japanese"][0]:
+        word = entries["japanese"][0]["word"]
+        reading = " (" + entries["japanese"][0]["reading"] +  ") "
+      else:
+        word = ""
+        reading = entries["japanese"][0]["reading"]
+
+      entry_list = []
+      last_particle = ""
+      for entry in entries["senses"]:
+        single_entry = []
+
+        # sometimes particles are null, meaning they adopt the previous, non-blank particle
+        if entry["parts_of_speech"]:
+          particle = ", ".join(entry["parts_of_speech"])
+          single_entry.append(particle)
+          last_particle = particle
+        else:
+          single_entry.append(last_particle)
+
+        # combining definitions
+        single_entry.append("; ".join(entry["english_definitions"]))
+        entry_list.append(single_entry)
+
+      # storing it into info
+      for entry in entry_list:
+        if len(entry[0]) != 0:
+          info += "\n**{}:** {}".format(entry[0], entry[1])
+        else:
+          info += "\n{}".format(entry[1])
+
+      # adding a link to the actual jisho page
+
+      info += "\n"
+      if len(entries["jlpt"]) != 0:
+        info += "\n**jlpt:** {}".format("".join(entries["jlpt"]))
+      if len(entries["tags"]) != 0:
+        info += "\n**Tags:** {}".format(", ".join(entries["tags"]))
+      info += "\n[More Information](https://jisho.org/word/{})".format(word)
+
+      # formally adding it to a field
+      embed.add_field(name = "{} {}".format(word, reading), value = info, inline = False)
 
 
-  def get_uptime(self):
-    # Outputs how long the bot has been active.
-    uptime = timedelta(seconds = time.time() - self.time_alive)
-    uptime = datetime(1,1,1) + uptime
-    return "{}d {}h {}m {}s".format(uptime.day-1, uptime.hour, uptime.minute, uptime.second)
+      self.generate_footer(ctx.author, embed)
+      embeds.append(embed)
 
+      count += 1
 
-  @cog_ext.cog_slash(name = "about", description = "Pulls up information about jisho.")
-  async def about(self, ctx):
-    # Constructing the Embed.
-    embed = discord.Embed(title = "", color = self.bot.user.color)
-    embed.set_author(name = "jisho", url = "https://github.com/snafuPop/jisho-bot", icon_url = "https://image.flaticon.com/icons/png/512/25/25231.png")
-    embed.set_thumbnail(url = self.bot.user.avatar_url)
-
-    # Constructing additional information.
-    info = []
-    info.append("**Author:** {}".format(await self.bot.fetch_user(94236862280892416)))
-    info.append("**Language:** Python {}.{}.{}".format(sys.version_info[0], sys.version_info[1], sys.version_info[2]))
-    info.append("**Discord.py Version:** {}".format(discord.__version__))
-    info.append("**Host:** [PythonAnywhere](https://www.pythonanywhere.com/)")
-    info.append("**Latency:** {:.4f}ms".format(self.bot.latency))
-    info.append("**CPU Usage:** {}%".format(psutil.cpu_percent()))
-    info.append("**Disk Usage:** {}%".format(psutil.disk_usage('/')[3]))
-    info.append("**Current Uptime:** {}".format(self.get_uptime()))
-    info.append("Currently supporting **{:,} servers** and **{:,} users**.".format(len(bot.guilds), len(bot.users)))
-
-    # Adding additional fields to the Embed.
-    bot_info = "\n".join(info)
-    embed.add_field(name = "**__Bot Statistics__**", value = bot_info)
-
-    # Constructing Buttons.
-    buttons = [
-      # Invite yvona Button.
-      manage_components.create_button(
-        style = ButtonStyle.URL,
-        label = "Invite jisho",
-        url = "https://discordapp.com/api/oauth2/authorize?client_id=887600725797007370&permissions=1861483585&scope=bot"),
-      # Github repo Button.
-      manage_components.create_button(
-        style = ButtonStyle.URL,
-        label = "GitHub repo",
-        url = "https://github.com/snafuPop/jisho-bot")]
-    action_row = manage_components.create_actionrow(*buttons)
-    await ctx.send(embed = embed, components = [action_row])
+    paginated_embed = Paginator(bot = self.bot, ctx = ctx, embeds = embeds, only = ctx.author)
+    await paginated_embed.start()
+    #await ctx.send(embed = embed)
 
 
 def setup(bot):
-  bot.add_cog(Info(bot))
+  bot.add_cog(Language(bot))
