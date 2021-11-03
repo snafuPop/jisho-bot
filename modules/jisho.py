@@ -116,7 +116,7 @@ class Language(commands.Cog):
       count += 1
 
     paginated_embed = Paginator(bot = self.bot, ctx = ctx, pages = embeds, authorOnly = True)
-    await paginated_embed.start()
+    await paginated_embed.run()
     #await ctx.send(embed = embed)
 
 
