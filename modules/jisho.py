@@ -5,7 +5,7 @@ from discord_slash.utils import manage_components
 from discord_slash.model import ButtonStyle
 from discord_slash.utils.manage_commands import create_option, create_choice
 from discord.ext import commands
-from ButtonPaginator import Paginator
+from dinteractions_Paginator import Paginator
 from builtins import bot
 import urllib.parse
 from random import choice
