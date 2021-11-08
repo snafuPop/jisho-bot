@@ -46,6 +46,7 @@ class Info(commands.Cog):
     embed = discord.Embed(title = "", color = self.bot.user.color)
     embed.set_author(name = "jisho", url = "https://github.com/snafuPop/jisho-bot", icon_url = "https://image.flaticon.com/icons/png/512/25/25231.png")
     embed.set_thumbnail(url = self.bot.user.avatar_url)
+    response = self.get_ec2_info()
 
     # Constructing additional information.
     info = []
